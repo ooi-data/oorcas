@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "oorcas"
+version = "0.0.2"
+description = "Generate OOI-RCA spectograms in the cloud"
+authors = [
+  { name = "RCA Data Team", email = "jduprey@uw.edu" },
+]
+readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["oorcas"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+requires-python = ">=3.10"
+dependencies = [
+    "loguru",
+    "matplotlib",
+    # github dependency
+    "ooipy @ git+https://github.com/Ocean-Data-Lab/ooipy.git@main"
+]
