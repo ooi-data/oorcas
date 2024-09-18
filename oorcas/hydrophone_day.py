@@ -1,15 +1,14 @@
 import obspy as obs
 import numpy as np
-import pandas as pd
-import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 import fsspec
 from datetime import timedelta, datetime
-from ooipy import HydrophoneData
+from ooipy.hydrophone.basic import HydrophoneData
 from datetime import datetime
 from obspy.core import UTCDateTime
+from tqdm import tqdm
 
 import multiprocessing as mp
 import concurrent.futures
@@ -55,7 +54,7 @@ class HydrophoneDay:
         self.clean_list=clean_list
         self.stream=stream
         self.spec=spec
-        
+        self.file_str = f"{self.refdes}_{self.date.strftime('%Y_%m_%d')}"
 
 
     def get_mseed_urls(self, day_str, refdes):
@@ -102,8 +101,12 @@ class HydrophoneDay:
         return data_url_list
 
     
-    def read_and_repair_gaps(self, fill_value, method):
-        self.clean_list = _map_concurrency(func=self._deal_with_gaps_and_overlaps, args=(fill_value, method), iterator=self.mseed_urls)
+    def read_and_repair_gaps(self, fill_value, method, wav_data_subtype):
+        self.clean_list = _map_concurrency(
+            func=self._deal_with_gaps_and_overlaps, 
+            args=(fill_value, method, wav_data_subtype), 
+            iterator=self.mseed_urls, verbose=False
+        )
 
     
     def create_single_stream(self, fill_value, method):
@@ -128,13 +131,14 @@ class HydrophoneDay:
         vmin=45
         vmax=90
 
-        hdata = ooipy.HydrophoneData(data=self.stream[0].data, header=self.stream[0].stats, node=self.refdes[9:14])
+        hdata = HydrophoneData(data=self.stream[0].data, header=self.stream[0].stats, node=self.refdes[9:14])
         if self.spec is None: 
             self.spec = hdata.compute_spectrogram(avg_time=avg_time, L=L)
             spec = self.spec
         if sel:
             spec = self.spec.sel(time=slice(sel[0], sel[1]))
-
+        if self.spec is not None and not sel:
+            spec = self.spec
         
         fig, ax = plt.subplots(figsize=(18, 6))
         c = ax.contourf(spec.time, spec.frequency, spec.T, levels=np.linspace(vmin, vmax, 300), extend='both', cmap='Spectral_r', vmin=vmin, vmax=vmax)
@@ -173,24 +177,45 @@ class HydrophoneDay:
         return cs
         
 
-    def _deal_with_gaps_and_overlaps(self, url, fill_value, method):
-   
+    def _deal_with_gaps_and_overlaps(self, url, fill_value, method, wav_data_subtype):
+        if wav_data_subtype not in ["PCM_32", "FLOAT"]:
+            raise ValueError("Invalid wave data subtype. Please specify 'PCM_32' or 'FLOAT'")
         # first read in mseed
-        st = obs.read(url, apply_calib=True)
-
-        # if almost 19.2 samples then concat, otherwise use method 0 
+        if wav_data_subtype == "PCM_32":
+            st = obs.read(url, apply_calib=False, dtype=np.int32)
+        if wav_data_subtype == "FLOAT":
+            st = obs.read(url, apply_calib=False, dtype=np.float64)
+        
+        
+        trace_id = st[0].stats["starttime"]
+        print("total traces before concatenation: " + str(len(st)), flush=True)
+        # if 19.2 samples +- 640 then concat
         samples = 0
         for trace in st:
             samples += len(trace)
-        if 19199360 <= samples <= 19200640:
-            print(f"There are {samples} samples in this stream, we will simply concatenate")
+            
+        if 19199360 <= samples <= 19200640: # CASE A just jitter, no true gaps <<<
+            print(f"There are {samples} samples in this stream, Simply concatenating")
             cs = self._merge_by_timestamps(st)
             print("total traces after concatenation: " + str(len(cs)))
-        else: 
-            print(f"There are a unexpected number of samples: {samples}. Using obspy method={method}, fill_value={str(fill_value)}")
-            cs = st.merge(method=method, fill_value=fill_value)
-            print("total trace after merge: " + str(len(cs)))
-    
+        else:
+            print(f"{trace_id}: there are a unexpected number of samples in this file. Checking for large gaps:")
+            gaps = st.get_gaps()
+            st_contains_large_gap = False
+            # loop checks for large gaps
+            for gap in gaps:
+                if gap[6] > 0.02: # TODO decide on threshold, the gaps 6th element is the gap length NEEDS TO BE ABSOLUTE VALUE
+                    st_contains_large_gap = True
+                    break
+            
+            if st_contains_large_gap: # CASE B shortened trace before divert with no real gaps
+                print(f"{trace_id}: there is a gap not caused by jitter. Using obspy method={method}, fill_value={str(fill_value)}")
+                cs = st.merge(method=method, fill_value=fill_value)
+                print("total trace after merge: " + str(len(cs)))
+            else: # CASE C - edge case - real gaps that should be filled using obspy fill_value and method of choice
+                print(f"{trace_id}: This file is short but only contains jitter. Simply concatenating")
+                cs = self._merge_by_timestamps(st)
+                print("total traces after concatenation: " + str(len(cs)), flush=True)
         return cs
 
 
