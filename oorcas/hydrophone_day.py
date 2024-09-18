@@ -141,7 +141,11 @@ class HydrophoneDay:
             spec = self.spec
         
         fig, ax = plt.subplots(figsize=(18, 6))
-        c = ax.contourf(spec.time, spec.frequency, spec.T, levels=np.linspace(vmin, vmax, 300), extend='both', cmap='Spectral_r', vmin=vmin, vmax=vmax)
+        c = ax.contourf(spec.time, spec.frequency, spec.T, 
+            levels=np.linspace(vmin, vmax, 300), extend='both', cmap='Spectral_r', 
+            vmin=vmin, vmax=vmax,
+            rasterized=True,
+        )
         cbar = fig.colorbar(c, ax=ax, label="dB rel µ Pa^2 / Hz", ticks=np.linspace(vmin, vmax, 10), pad=0.01)
             
         ax.set_ylabel('frequency')
