@@ -208,7 +208,7 @@ class HydrophoneDay:
             st_contains_large_gap = False
             # loop checks for large gaps
             for gap in gaps:
-                if gap[6] > 0.02: # TODO decide on threshold, the gaps 6th element is the gap length NEEDS TO BE ABSOLUTE VALUE
+                if abs(gap[6]) > 0.02: # TODO decide on threshold, the gaps 6th element is the gap length NEEDS TO BE ABSOLUTE VALUE
                     st_contains_large_gap = True
                     break
             
