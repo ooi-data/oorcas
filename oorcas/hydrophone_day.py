@@ -212,11 +212,11 @@ class HydrophoneDay:
                     st_contains_large_gap = True
                     break
             
-            if st_contains_large_gap: # CASE B shortened trace before divert with no real gaps
+            if st_contains_large_gap: # CASE C - edge case - real gaps that should be filled using obspy fill_value and method of choice
                 print(f"{trace_id}: there is a gap not caused by jitter. Using obspy method={method}, fill_value={str(fill_value)}")
                 cs = st.merge(method=method, fill_value=fill_value)
                 print("total trace after merge: " + str(len(cs)))
-            else: # CASE C - edge case - real gaps that should be filled using obspy fill_value and method of choice
+            else: # # CASE B shortened trace before divert with no real gaps 
                 print(f"{trace_id}: This file is short but only contains jitter. Simply concatenating")
                 cs = self._merge_by_timestamps(st)
                 print("total traces after concatenation: " + str(len(cs)), flush=True)

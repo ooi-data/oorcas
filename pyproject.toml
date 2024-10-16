@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "oorcas"
-version = "0.0.2"
+version = "0.0.3"
 description = "Generate OOI-RCA spectograms in the cloud"
 authors = [
   { name = "RCA Data Team", email = "jduprey@uw.edu" },
@@ -26,6 +26,7 @@ requires-python = ">=3.10"
 dependencies = [
     "loguru",
     "matplotlib",
+    "s3fs",
     # github dependency
     "ooipy @ git+https://github.com/Ocean-Data-Lab/ooipy.git@main"
 ]
