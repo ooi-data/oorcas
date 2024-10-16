@@ -15,6 +15,13 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+    "loguru",
+    "matplotlib",
+    "s3fs",
+    "ooipy @ git+https://github.com/Ocean-Data-Lab/ooipy.git@main"
+]
+requires-python = ">=3.10"
 
 [tool.hatch.build.targets.wheel]
 packages = ["oorcas"]
@@ -22,11 +29,4 @@ packages = ["oorcas"]
 [tool.hatch.metadata]
 allow-direct-references = true
 
-requires-python = ">=3.10"
-dependencies = [
-    "loguru",
-    "matplotlib",
-    "s3fs",
-    # github dependency
-    "ooipy @ git+https://github.com/Ocean-Data-Lab/ooipy.git@main"
-]
+
